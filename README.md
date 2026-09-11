@@ -8,9 +8,22 @@ and the service behind it is private. Neither of them is where a translation is
 written any more: they hold the built copy, this repository holds the source.
 
 ```
-locales/site/<lang>.js     ->  SteamProfiler.Front   site/dict.js
+locales/site/<lang>.js     ->  SteamProfiler.Front   site/dict.<lang>.js
 locales/embed/<lang>.json  ->  SteamProfiler.Api     i18n_words.py
 ```
+
+A reader is served exactly one dictionary. `/dict.js` is not a file: nginx
+picks `dict.pt.js` or `dict.ru.js` from the `sp-lang` cookie, falling back to
+`Accept-Language` and then to English, and `serve.py` does the same three steps
+in a local checkout. That is what the split is for. The old single file carried
+every language and cost 152 KB gzipped for a reader who could only read one of
+them; Portuguese is 48 KB and Russian 58 KB.
+
+The fallback moved here as a consequence. There is no second dictionary in the
+browser to fall back to, so each language is built as the English file with the
+lines that language has translated swapped in: an untranslated key arrives as
+English text, and a language that is 40% done still answers for 100% of the
+keys.
 
 ## The two stores, and why they are not one
 
@@ -64,6 +77,9 @@ is holding strings older than the ones here, and the pre-push hook runs it.
   not English text on a Russian chart.
 - **a key that is no longer in English.** English is the source of truth: a key
   only the translations still have is one that was renamed and left behind.
+- **a key written twice in one file.** The browser keeps the last one and says
+  nothing, so the first is a string somebody wrote, translated, and will never
+  see on a page. There was one, and in Russian the two lines disagreed.
 
 A key *missing* from a translation is not a failure. It falls back to English
 by design, and `check.js` counts it so the report doubles as the todo list.
@@ -71,14 +87,18 @@ by design, and `check.js` counts it so the report doubles as the todo list.
 ## Adding a language
 
 Copy `locales/site/en.js` and `locales/embed/en.json` to the new code, translate,
-run `node check.js` and `./build.py`. That is this repository done, and it is the
-smaller half: a language is also a storefront, a currency and a date format, so
-the two consumers need to be told it exists.
+run `node check.js` and `./build.py`. Untranslated keys need not be deleted or
+kept: what is missing comes out as English in the built file either way. That is
+this repository done, and it is the smaller half: a language is also a
+storefront, a currency and a date format, so the two consumers need to be told
+it exists.
 
 In `SteamProfiler.Front`:
 
 - `site/i18n.js` - `LOCALES`, `STORES`, `MONEY`, `LANG_NAMES` and the browser
-  sniffing in `pickLang()`. `STORES` is why the language picker is also the
+  sniffing in `pickLang()`. A language missing from `LOCALES` is one the picker
+  will not offer and `pickLang()` will never return, so its dictionary would be
+  built and never served. `STORES` is why the language picker is also the
   currency picker: Steam prices each region on its own, so the site asks the
   storefront that language belongs to instead of converting.
 - `tools/check-html.py`, `tools/check-prices.js`, `tools/check-policy.js`,
@@ -86,6 +106,11 @@ In `SteamProfiler.Front`:
 - `site/banned.html`, `appeal.html`, `appeal-sent.html`, `abuse.html` - the ban
   wall and the ticket form are served without the dictionary, so they spell all
   the languages out in the markup.
+
+- `serve.py` and, in the API repo, `nginx.conf` and `admin/server.py` - the
+  three places that choose which dictionary to send. They read the languages
+  off disk, so a new file is picked up on its own; what they do carry by hand
+  is the `Accept-Language` guess for a first visit.
 
 In the API: `meta.py` (`STORE_LANGUAGES`, `COUNTRIES`), `api.py` (`OG_LOCALE`)
 and `blog.py` (`LANGS`, which decides how many translations a post gets).

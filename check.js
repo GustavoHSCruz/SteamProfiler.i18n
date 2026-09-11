@@ -44,6 +44,22 @@ function languages(dir, ext) {
   return ['en', ...found.filter((l) => l !== 'en').sort()];
 }
 
+/** A key written twice in the same file. The browser keeps the last one and
+ *  says nothing, so the first is a string somebody wrote, translated, and will
+ *  never see on a page. Invisible to the evaluated object, which is why this
+ *  reads the source. */
+function duplicates(lang) {
+  const seen = new Set();
+  const twice = [];
+  for (const line of fs.readFileSync(path.join(SITE, `${lang}.js`), 'utf8').split('\n')) {
+    const m = line.match(/^ {4}'([^']+)':/);
+    if (!m) continue;
+    if (seen.has(m[1])) twice.push(m[1]);
+    seen.add(m[1]);
+  }
+  return twice;
+}
+
 /** One locale file, evaluated the way the browser will evaluate it. plural() is
  *  stubbed because it lives in the front's i18n.js, not here. */
 function load(lang) {
@@ -105,6 +121,10 @@ if (dicts.en) {
     const dict = dicts[lang];
     if (!dict) continue;
     const keys = Object.keys(dict);
+    const twice = duplicates(lang);
+    if (twice.length) {
+      fail.push(`${lang}: written twice, and only the last one is ever read: ${twice.join(', ')}`);
+    }
     const gone = keys.filter((k) => !(k in dicts.en));
     if (gone.length) {
       fail.push(`${lang}: ${gone.length} key(s) not in English - renamed or deleted there: ${gone.slice(0, 8).join(', ')}`);

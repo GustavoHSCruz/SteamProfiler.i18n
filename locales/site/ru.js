@@ -1,5 +1,6 @@
 /* steamprofiler.org - every string on the site, in Russian.
-   Source; site/dict.js in SteamProfiler.Front is built from this file.
+   Source; site/dict.ru.js in SteamProfiler.Front is built from this file,
+   with English merged underneath whatever this one has not translated.
    See README.md for what the keys mean and how a string gets in. */
 
 const DICT_RU = {
@@ -1134,7 +1135,7 @@ const DICT_RU = {
     'g.a3_terrain': '{name} занял {h} ч - больше, чем все остальные территории вместе взятые.',
     'g.n_of_m': '{n} из {m}',
     'g.n_terrains': (v) => `${v.n} ${plural(v.raw, ['территория', 'территории', 'территорий'])}`,
-    'g.terrain': 'территория',
+    'g.terrain': 'местность',
     'g.n_entries': (v) => `${v.n} ${plural(v.raw, ['запись', 'записи', 'записей'])}`,
     'g.p_absent': '\u0423 Steam \u0432\u043e\u043e\u0431\u0449\u0435 \u043d\u0435\u0442 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u044b \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0430 \u0434\u043b\u044f \u044d\u0442\u043e\u0433\u043e \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u044f. \u041e\u043d\u043e \u0435\u0441\u0442\u044c \u0432 \u0431\u0438\u0431\u043b\u0438\u043e\u0442\u0435\u043a\u0435 \u0438 \u043d\u0435 \u043f\u0440\u043e\u0434\u0430\u0451\u0442\u0441\u044f.',
     'g.p_down': '\u0421\u0435\u0439\u0447\u0430\u0441 \u043d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0434\u043e\u0441\u0442\u0443\u0447\u0430\u0442\u044c\u0441\u044f \u0434\u043e \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0430 Steam.',
@@ -1311,7 +1312,6 @@ const DICT_RU = {
     'g.stats_screen': 'Статистика',
     'g.tasks_done': 'выполненные задачи',
     'g.tasks_done_n': 'выполнено задач - {done} из {total}',
-    'g.terrain': 'местность',
     'g.the_forge': 'Кузница',
     'g.the_medal': 'Медаль',
     'g.the_only': 'единственное',

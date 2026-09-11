@@ -1,28 +1,46 @@
 #!/usr/bin/env python3
 """Writes what is in locales/ into the repositories that serve it.
 
-Nothing here runs on the server or in a browser: this builds the two files the
+Nothing here runs on the server or in a browser: this builds the files the
 other repos ship, and those files are committed there. A clone of the front
 still renders without ever having seen this repo, which is the whole reason the
 artifacts are checked in rather than built at deploy time.
 
-  locales/site/<lang>.js     ->  SteamProfiler.Front  site/dict.js
+  locales/site/<lang>.js     ->  SteamProfiler.Front  site/dict.<lang>.js
   locales/embed/<lang>.json  ->  SteamProfiler.Api    i18n_words.py
 
-`--check` builds both in memory and compares them against what is on disk in
-those repos, so the pre-push hook can refuse a push that would leave a consumer
-holding last week's strings. Consumers that are not checked out beside this one
-are skipped and named, because a translator has only this repo.
+**One file per language, and the fallback is resolved here.** A reader used to
+download every language in order to read in one of them. Now the browser is
+served exactly one file, chosen from the `sp-lang` cookie by nginx, and by
+serve.py in a local checkout, both answering at /dict.js. The dictionary costs
+a third of what it did.
+
+The price is that a missing string can no longer fall back at runtime: there is
+nothing to fall back to in the file that arrived. So it falls back here
+instead. Each language is built as the English file with the lines that
+language has translated swapped in, which means an untranslated key reaches the
+page as English rather than as a raw key, and a language that is 40% done still
+answers for 100% of them. Every entry is one line, which is what makes the swap
+a swap and not a parse.
+
+`--check` builds everything in memory and compares it against what is on disk
+in those repos, so the pre-push hook can refuse a push that would leave a
+consumer holding last week's strings. Consumers that are not checked out beside
+this one are skipped and named, because a translator has only this repo.
 """
 
 import argparse
 import json
 import pathlib
+import re
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 SITE = HERE / 'locales' / 'site'
 EMBED = HERE / 'locales' / 'embed'
+
+ENTRY = re.compile(r"^ {4}'((?:[^'\\]|\\.)*)':")
+
 
 # English first because it is the fallback, then the rest in alphabetical order.
 def langs(folder, suffix):
@@ -46,17 +64,38 @@ def body_of(path):
     return lines[start:end]
 
 
-def site_dict():
+def entries_of(path):
+    """{key: the whole line it is written on}. Every entry is one line, which
+    check.js enforces, so a translation is a line and merging is a swap."""
+    out = {}
+    for line in body_of(path):
+        m = ENTRY.match(line)
+        if m:
+            out[m.group(1)] = line
+    return out
+
+
+def site_dict(lang):
+    """One language, with English underneath it.
+
+    The English file is the skeleton - its order, its section comments, its
+    lines - and every key this language has translated replaces the English
+    line in place. What is left untranslated stays English, which is the
+    fallback that used to happen in the reader's browser."""
+    mine = entries_of(SITE / f'{lang}.js') if lang != 'en' else {}
     out = [
-        '/* steamprofiler.org - every string on the site, in the languages it speaks.',
+        f'/* steamprofiler.org - every string on the site, in {lang}.',
         '',
         '   GENERATED from the SteamProfiler.i18n repository - do not edit here. A',
         '   fix to a string, or a language, is a pull request there; running its',
         '   build.py writes this file. Editing this copy works until the next build',
         '   and then quietly goes away.',
         '',
-        '   English is the source of truth and the fallback: a key missing from',
-        '   another language falls back to en rather than to nothing.',
+        '   One language per file, and a reader is served exactly one of them:',
+        '   nginx picks it from the `sp-lang` cookie, serve.py does the same in a',
+        '   local checkout, and both answer at /dict.js. So there is no fallback',
+        '   left at runtime and none is needed - a key this language has not',
+        '   translated is already sitting here in English.',
         '',
         '   Keys read as paths - `nav.*` chrome, `land.*` the landing page, `dash.*`',
         '   the dashboard, `g.*` the game pages, `msg.*` messages, `sup.*` support,',
@@ -64,15 +103,14 @@ def site_dict():
         '   (`arma.*`, `gmod.*`, `pd2.*`, …) are the keys the API sends instead of',
         '   prose, so the server never has to know which language anyone reads. */',
         '',
+        f"const DICT_LANG = '{lang}';",
         'const DICT = {',
     ]
-    names = langs(SITE, '.js')
-    for i, lang in enumerate(names):
-        if i:
-            out.append('')
-        out.append(f'  {lang}: {{')
-        out += body_of(SITE / f'{lang}.js')
-        out.append('  },')
+    for line in body_of(SITE / 'en.js'):
+        m = ENTRY.match(line)
+        if m and m.group(1) in mine:
+            line = mine[m.group(1)]
+        out.append(line[2:] if line.startswith('  ') else line)
     out.append('};')
     return '\n'.join(out) + '\n'
 
@@ -100,14 +138,14 @@ def embed_words():
     return '\n'.join(out) + '\n'
 
 
-TARGETS = [
-    ('front', pathlib.Path('steamprofiler-front/site/dict.js'), site_dict),
-    ('api', pathlib.Path('steamprofiler-api/i18n_words.py'), embed_words),
-]
-
-
-def resolve(rel, root):
-    return (root / rel).resolve()
+def targets():
+    """(name, path under --root, what belongs in it). One dictionary per
+    language, plus the words the API paints."""
+    out = [('front', pathlib.Path(f'steamprofiler-front/site/dict.{lang}.js'),
+            (lambda l: lambda: site_dict(l))(lang))
+           for lang in langs(SITE, '.js')]
+    out.append(('api', pathlib.Path('steamprofiler-api/i18n_words.py'), embed_words))
+    return out
 
 
 def main():
@@ -119,8 +157,8 @@ def main():
     args = ap.parse_args()
 
     drift, skipped = [], []
-    for name, rel, render in TARGETS:
-        path = resolve(rel, args.root)
+    for name, rel, render in targets():
+        path = (args.root / rel).resolve()
         if not path.parent.is_dir():
             skipped.append(f'{name}: {path.parent} is not checked out')
             continue

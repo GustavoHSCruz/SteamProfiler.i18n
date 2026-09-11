@@ -1,5 +1,6 @@
 /* steamprofiler.org - every string on the site, in Portuguese.
-   Source; site/dict.js in SteamProfiler.Front is built from this file.
+   Source; site/dict.pt.js in SteamProfiler.Front is built from this file,
+   with English merged underneath whatever this one has not translated.
    See README.md for what the keys mean and how a string gets in. */
 
 const DICT_PT = {
@@ -1310,7 +1311,6 @@ const DICT_PT = {
     'g.stats_screen': 'Estatísticas',
     'g.tasks_done': 'tarefas concluídas',
     'g.tasks_done_n': 'tarefas concluídas - {done} de {total}',
-    'g.terrain': 'terreno',
     'g.the_forge': 'A Forja',
     'g.the_medal': 'A medalha',
     'g.the_only': 'a única',
