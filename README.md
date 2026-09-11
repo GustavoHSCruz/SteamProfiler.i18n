@@ -50,11 +50,26 @@ which language anybody reads.
 ## How a string reaches a reader
 
 ```
-edit locales/                 node check.js      refuses a broken translation
-  -> ./build.py               writes site/dict.js and i18n_words.py
-  -> commit in all three      the built copies are checked in on purpose
-  -> git push in front/api    which is what publishes (see those repos)
+./release.sh
+  |
+  +-- node check.js        refuses a broken translation
+  +-- git push             this repository, source before anything built from it
+  +-- ./build.py           writes dict.<lang>.js and i18n_words.py
+  +-- commit + push        in the front and in the api, which is what publishes
 ```
+
+**Merging a pull request here publishes nothing.** The deploy watcher follows
+`origin/main` of the front and of the api, and this repository is neither: the
+strings reach a reader when the files built from them are committed over there.
+`./release.sh` is that step, and it is the whole of it. Each consumer's own
+pre-push hook still runs its own suite on the way out, so a bad string is
+refused by the repository it would have broken.
+
+It stops short of one thing, on purpose, and says so loudly: a new language is
+a file *and* a line in the nginx map that chooses which file to serve, and an
+entry in `LOCALES` that puts it in the picker. Without those the dictionary is
+published and nobody can ask for it, so `release.sh` names both places and
+exits 2.
 
 The built files are committed rather than generated at deploy time so that a
 clone of the front still renders without ever having seen this repository.
@@ -87,7 +102,7 @@ by design, and `check.js` counts it so the report doubles as the todo list.
 ## Adding a language
 
 Copy `locales/site/en.js` and `locales/embed/en.json` to the new code, translate,
-run `node check.js` and `./build.py`. Untranslated keys need not be deleted or
+run `node check.js` and `./release.sh`. Untranslated keys need not be deleted or
 kept: what is missing comes out as English in the built file either way. That is
 this repository done, and it is the smaller half: a language is also a
 storefront, a currency and a date format, so the two consumers need to be told
@@ -118,8 +133,11 @@ and `blog.py` (`LANGS`, which decides how many translations a post gets).
 ## Running it
 
 ```
-./check.sh          the whole suite: check.js, then build.py --check
-./build.py          write the built files into the sibling repositories
+./release.sh            publish: check, push, build, commit and push the consumers
+./release.sh --dry-run  say what that would do and touch nothing
+./check.sh              the whole suite: check.js, then build.py --check
+./check.sh --strings    only the strings, which is what the pre-push hook runs
+./build.py              write the built files into the sibling repositories
 ./build.py --root ~/somewhere/else
 ```
 

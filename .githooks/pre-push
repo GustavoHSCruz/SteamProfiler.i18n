@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Refuses a push that would leave a string broken, or a consumer holding
-# strings older than the ones here. Enable with:
+# Refuses a push that would leave a string broken. Enable with:
 #   git config core.hooksPath .githooks
-exec "$(dirname "$0")/../check.sh"
+#
+# Only the strings: whether the consumers are up to date is release.sh's job,
+# and checking it here would require publishing the built files before pushing
+# the source they are built from.
+exec "$(dirname "$0")/../check.sh" --strings

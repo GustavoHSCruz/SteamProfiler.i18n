@@ -65,10 +65,9 @@ It refuses a renamed variable, an unbalanced tag, a word missing from
 translated yet is counted, not refused, so the output doubles as what is left
 to do.
 
-If the front is checked out beside this one, run `./build.py` and commit the
-file it writes there too, in a pull request on that repository pointing back at
-this one. If it is not, say so in the PR and the built copy will be regenerated
-on merge.
+You do not need to build anything for a pull request: the files the other
+repositories ship are written on release, by `./release.sh`, after the merge.
+Change `locales/` and leave the rest alone.
 
 Russian is the one to eyeball for length: a layout that fits in English and
 overflows in Russian is the common failure here.

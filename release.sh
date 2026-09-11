@@ -60,20 +60,24 @@ if [ -n "$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null)" ]; then
   elif [ "$behind" -gt 0 ]; then
     die "this branch and origin/main have both moved. Sort that out first."
   fi
-  # Ahead is refused rather than pulled along: the commit written into the
-  # consumers names the sha these strings came from, and a sha nobody else has
-  # is a receipt for a file that cannot be traced back to a translation.
-  if [ "$(git rev-list --count '@{u}'..HEAD)" -gt 0 ]; then
-    say ""
-    git log --oneline '@{u}'..HEAD
-    die "these commits were never pushed. Push them first: what lands in the
-consumers points back here by sha, and that sha has to exist for anybody else."
-  fi
 fi
 
 # ── The strings themselves ───────────────────────────────────────────
 say "== checking the strings"
 node check.js || die "the strings did not pass. Nothing was published."
+
+# ── This repository goes out first ───────────────────────────────────
+# The commit that lands in each consumer names the sha these strings came from,
+# and a sha nobody else has is a receipt pointing at nothing. So the source is
+# published before the files built from it, never after.
+mine="$(git rev-list --count '@{u}'..HEAD 2>/dev/null || echo 0)"
+if [ "$mine" -gt 0 ]; then
+  say ""
+  say "== pushing $mine commit(s) of strings"
+  git log --oneline '@{u}'..HEAD | sed 's/^/       /'
+  run git push -q || die "the push was refused. Read what the checks said:
+nothing was published anywhere."
+fi
 
 # ── Each consumer has to be somewhere a commit can land ──────────────
 consumers=""
@@ -113,10 +117,12 @@ published=0
 
 for name in $consumers; do
   case "$name" in
-    front) repo="$FRONT"; paths="site/dict.*.js" ;;
-    api)   repo="$API";   paths="i18n_words.py" ;;
+    front) repo="$FRONT"; paths='site/dict.*.js' ;;
+    api)   repo="$API";   paths='i18n_words.py' ;;
   esac
-  changed="$(git -C "$repo" status --porcelain -- $paths)"
+  # Quoted, so the glob is git's and is resolved inside that repository rather
+  # than against whatever happens to sit next to this script.
+  changed="$(git -C "$repo" status --porcelain -- "$paths")"
   if [ -z "$changed" ]; then
     say "== $name already has these strings"
     continue
@@ -125,7 +131,12 @@ for name in $consumers; do
   say "== $name"
   printf '%s\n' "$changed" | sed 's/^/       /'
   message="$(printf 'Atualiza os textos a partir do repo de idiomas\n\nSteamProfiler.i18n em %s, "%s".\nArquivo gerado pelo build.py de lá; não editar aqui.\n' "$here_sha" "$here_subject")"
-  run git -C "$repo" commit -q -m "$message" -- $paths || die "$name: the commit failed"
+  # add before commit, because a language that is new here is a file git has
+  # never seen, and a pathspec commit does not pick up what is untracked. The
+  # pathspec on the commit is what keeps unrelated work in that repository out
+  # of it.
+  run git -C "$repo" add -- "$paths" || die "$name: could not stage the files"
+  run git -C "$repo" commit -q -m "$message" -- "$paths" || die "$name: the commit failed"
   run git -C "$repo" push -q || die "$name: the push was refused. Its own checks
 run on the way out, so read what they said - nothing was published for $name."
   published=1
