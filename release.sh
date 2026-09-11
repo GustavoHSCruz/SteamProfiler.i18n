@@ -60,6 +60,15 @@ if [ -n "$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null)" ]; then
   elif [ "$behind" -gt 0 ]; then
     die "this branch and origin/main have both moved. Sort that out first."
   fi
+  # Ahead is refused rather than pulled along: the commit written into the
+  # consumers names the sha these strings came from, and a sha nobody else has
+  # is a receipt for a file that cannot be traced back to a translation.
+  if [ "$(git rev-list --count '@{u}'..HEAD)" -gt 0 ]; then
+    say ""
+    git log --oneline '@{u}'..HEAD
+    die "these commits were never pushed. Push them first: what lands in the
+consumers points back here by sha, and that sha has to exist for anybody else."
+  fi
 fi
 
 # ── The strings themselves ───────────────────────────────────────────
