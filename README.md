@@ -4,13 +4,24 @@ Every string steamprofiler.org shows a reader, in every language it speaks, and
 the build that writes them into the two repositories that serve them.
 
 The site is [SteamProfiler.Front](https://github.com/GustavoHSCruz/SteamProfiler.Front)
-and the service behind it is private. Neither of them is where a translation is
-written any more: they hold the built copy, this repository holds the source.
+and the service behind it is
+[SteamProfiler.Api](https://github.com/GustavoHSCruz/SteamProfiler.Api), both
+MIT. Neither of them is where a translation is written any more: they hold the
+built copy, this repository holds the source.
 
 ```
 locales/site/<lang>.js     ->  SteamProfiler.Front   site/dict.<lang>.js
 locales/embed/<lang>.json  ->  SteamProfiler.Api     i18n_words.py
+both of them, counted      ->  SteamProfiler.Front   site/coverage.js
 ```
+
+The third line is not strings but a count of them, and it is written from here
+for the same reason the dictionaries are: once English has been merged
+underneath a language, the file that ships can no longer say which half was
+translated and which half fell back. `coverage.js` is what
+[steamprofiler.org/translate](https://steamprofiler.org/translate) draws, which
+is the page that asks a reader to become a translator - so the numbers on it
+are only ever as current as the last `./release.sh`.
 
 A reader is served exactly one dictionary. `/dict.js` is not a file: nginx
 picks `dict.pt.js` or `dict.ru.js` from the `sp-lang` cookie, falling back to
@@ -54,7 +65,7 @@ which language anybody reads.
   |
   +-- node check.js        refuses a broken translation
   +-- git push             this repository, source before anything built from it
-  +-- ./build.py           writes dict.<lang>.js and i18n_words.py
+  +-- ./build.py           writes dict.<lang>.js, i18n_words.py, coverage.js
   +-- commit + push        in the front and in the api, which is what publishes
 ```
 
@@ -107,6 +118,11 @@ kept: what is missing comes out as English in the built file either way. That is
 this repository done, and it is the smaller half: a language is also a
 storefront, a currency and a date format, so the two consumers need to be told
 it exists.
+
+The site's [translation page](https://steamprofiler.org/translate) needs no
+telling. `coverage.js` is built from `locales/` like everything else, so a new
+language turns up there with a bar of its own on the same `./release.sh` that
+publishes its first string.
 
 In `SteamProfiler.Front`:
 

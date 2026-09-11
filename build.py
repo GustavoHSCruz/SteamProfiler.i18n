@@ -8,6 +8,7 @@ artifacts are checked in rather than built at deploy time.
 
   locales/site/<lang>.js     ->  SteamProfiler.Front  site/dict.<lang>.js
   locales/embed/<lang>.json  ->  SteamProfiler.Api    i18n_words.py
+  both of them, counted      ->  SteamProfiler.Front  site/coverage.js
 
 **One file per language, and the fallback is resolved here.** A reader used to
 download every language in order to read in one of them. Now the browser is
@@ -22,6 +23,11 @@ language has translated swapped in, which means an untranslated key reaches the
 page as English rather than as a raw key, and a language that is 40% done still
 answers for 100% of them. Every entry is one line, which is what makes the swap
 a swap and not a parse.
+
+The third artifact is not strings but a count of them, and it is written from
+here for the same reason the dictionaries are: once English is merged underneath
+a language, the file that ships can no longer say which half was translated.
+See coverage() - it is what the /translate page draws.
 
 `--check` builds everything in memory and compares it against what is on disk
 in those repos, so the pre-push hook can refuse a push that would leave a
@@ -138,13 +144,98 @@ def embed_words():
     return '\n'.join(out) + '\n'
 
 
+# ── The coverage panel ───────────────────────────────────────────────
+# The site has a page that says how much of it each language has, and it is
+# built here rather than fetched from anywhere: this is the only place that
+# knows what a language has translated, because the dictionary it ships has
+# English merged underneath and can no longer tell the two apart.
+#
+# The groups exist so the page can say where the weight is. A translator
+# deciding whether to start sees that the game pages are two fifths of every
+# string on the site, and that the rest of it is smaller than it looks. They
+# are prefixes and not sections, because the section comments in en.js are
+# prose for a person reading the file and were never meant to partition it.
+#
+# The labels are not here. They are `tr.grp_*` in the dictionary, like every
+# other word a reader sees, so this writes the id and the page translates it.
+GROUPS = (('g', 'games'), ('em', 'generator'), ('fx', 'franchises'),
+          ('dash', 'dash'), ('priv', 'privacy'))
+
+
+def group_of(key):
+    prefix = key.split('.', 1)[0]
+    for head, name in GROUPS:
+        if prefix == head:
+            return name
+    return 'rest'
+
+
+def coverage():
+    """What each language has, counted against English.
+
+    Deliberately has no timestamp in it. A date would make this file differ
+    from itself every day, which would turn `--check` - the hook that refuses a
+    push where a consumer has drifted - into an alarm that goes off on its own
+    every morning."""
+    english = entries_of(SITE / 'en.js')
+    order = [name for _, name in GROUPS] + ['rest']
+    weight = {name: 0 for name in order}
+    for key in english:
+        weight[group_of(key)] += 1
+
+    languages = []
+    for lang in langs(SITE, '.js'):
+        mine = english if lang == 'en' else entries_of(SITE / f'{lang}.js')
+        done = {name: 0 for name in order}
+        for key in mine:
+            # A key this language has that English does not is a key that was
+            # renamed or deleted there. check.js refuses that; counting it
+            # here would report 101% while it is being fixed.
+            if key in english:
+                done[group_of(key)] += 1
+        languages.append({'code': lang, 'done': sum(done.values()),
+                          'groups': done})
+
+    embed_langs = langs(EMBED, '.json')
+    words = json.loads((EMBED / 'en.json').read_text(encoding='utf-8'))
+    # Heaviest first, because the list is read to decide where to start.
+    # `rest` is pinned to the end wherever it lands: it is a residual and not
+    # a topic, and a translator cannot choose to do it first.
+    named = sorted((n for n in order if n != 'rest'),
+                   key=lambda n: -weight[n])
+    return {'keys': len(english),
+            'groups': [{'id': name, 'keys': weight[name]}
+                       for name in named + ['rest']],
+            'languages': languages,
+            'embed': {'words': len(words), 'languages': embed_langs}}
+
+
+def coverage_js():
+    body = json.dumps(coverage(), ensure_ascii=False, indent=2)
+    return '\n'.join([
+        '/* steamprofiler.org - how much of the site each language has.',
+        '',
+        '   GENERATED from the SteamProfiler.i18n repository - do not edit here.',
+        '   Its build.py writes this file; /translate is the page that reads it.',
+        '',
+        '   Counted against English, which is the source of truth and therefore',
+        '   always whole. A language is at less than 100% when keys of English',
+        '   are missing from it, and those reach a reader as English rather than',
+        '   as a raw key - which is why a translation can be published at 40% and',
+        '   still answer for every string on the site. */',
+        '',
+        'const COVERAGE = ' + body + ';',
+    ]) + '\n'
+
+
 def targets():
     """(name, path under --root, what belongs in it). One dictionary per
-    language, plus the words the API paints."""
+    language, the words the API paints, and the counts /translate draws."""
     out = [('front', pathlib.Path(f'steamprofiler-front/site/dict.{lang}.js'),
             (lambda l: lambda: site_dict(l))(lang))
            for lang in langs(SITE, '.js')]
     out.append(('api', pathlib.Path('steamprofiler-api/i18n_words.py'), embed_words))
+    out.append(('front', pathlib.Path('steamprofiler-front/site/coverage.js'), coverage_js))
     return out
 
 

@@ -117,12 +117,18 @@ published=0
 
 for name in $consumers; do
   case "$name" in
-    front) repo="$FRONT"; paths='site/dict.*.js' ;;
-    api)   repo="$API";   paths='i18n_words.py' ;;
+    front) repo="$FRONT"; paths=('site/dict.*.js' 'site/coverage.js') ;;
+    api)   repo="$API";   paths=('i18n_words.py') ;;
   esac
-  # Quoted, so the glob is git's and is resolved inside that repository rather
-  # than against whatever happens to sit next to this script.
-  changed="$(git -C "$repo" status --porcelain -- "$paths")"
+  # An array, because the front has two kinds of built file now: the
+  # dictionaries and the coverage counts /translate draws. One string with a
+  # space in it would have been a single pathspec containing a space, which
+  # matches nothing and would have published the dictionaries while quietly
+  # leaving the counts behind.
+  #
+  # Each element quoted, so the glob is git's and is resolved inside that
+  # repository rather than against whatever happens to sit next to this script.
+  changed="$(git -C "$repo" status --porcelain -- "${paths[@]}")"
   if [ -z "$changed" ]; then
     say "== $name already has these strings"
     continue
@@ -135,8 +141,8 @@ for name in $consumers; do
   # never seen, and a pathspec commit does not pick up what is untracked. The
   # pathspec on the commit is what keeps unrelated work in that repository out
   # of it.
-  run git -C "$repo" add -- "$paths" || die "$name: could not stage the files"
-  run git -C "$repo" commit -q -m "$message" -- "$paths" || die "$name: the commit failed"
+  run git -C "$repo" add -- "${paths[@]}" || die "$name: could not stage the files"
+  run git -C "$repo" commit -q -m "$message" -- "${paths[@]}" || die "$name: the commit failed"
   run git -C "$repo" push -q || die "$name: the push was refused. Its own checks
 run on the way out, so read what they said - nothing was published for $name."
   published=1
@@ -170,7 +176,7 @@ if [ -n "$stranded" ]; then
   say "PUBLISHED, BUT NOT SERVED$stranded"
   say ""
   say "The dictionary is on the site and no reader can ask for it until those"
-  say "lines exist. The nginx one is in the private repository."
+  say "lines exist. Both files are in the repositories named above."
   exit 2
 fi
 
