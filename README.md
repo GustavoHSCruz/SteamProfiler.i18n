@@ -24,7 +24,7 @@ is the page that asks a reader to become a translator - so the numbers on it
 are only ever as current as the last `./release.sh`.
 
 A reader is served exactly one dictionary. `/dict.js` is not a file: nginx
-picks `dict.pt.js` or `dict.ru.js` from the `sp-lang` cookie, falling back to
+picks the matching `dict.<lang>.js` from the `sp-lang` cookie, falling back to
 `Accept-Language` and then to English, and `serve.py` does the same three steps
 in a local checkout. That is what the split is for. The old single file carried
 every language and cost 152 KB gzipped for a reader who could only read one of

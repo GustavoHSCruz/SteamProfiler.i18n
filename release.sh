@@ -156,7 +156,7 @@ stranded=""
 for file in locales/site/*.js; do
   lang="$(basename "$file" .js)"
   missing=""
-  grep -qE "const LOCALES = \{[^}]*\b$lang:" "$FRONT/site/i18n.js" \
+  grep -q "'$lang':" "$FRONT/site/i18n.js" \
     || missing="$missing
        $FRONT/site/i18n.js: add '$lang' to LOCALES, STORES, MONEY, LANG_NAMES and pickLang()"
   if [ -d "$API/.git" ]; then

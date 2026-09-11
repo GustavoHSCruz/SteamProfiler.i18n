@@ -936,7 +936,7 @@ const DICT_EN = {
     'err.blog_empty': 'Write at least one language before saving.',
     'err.half_written': 'The {lang} version has a title or a text, but not both.',
     'err.origin_missing': 'The language marked as the original is one of the empty ones.',
-    'err.bad_lang': 'That is not one of the three languages.',
+    'err.bad_lang': 'That is not one of the supported languages.',
     'err.too_many_tags': 'Six tags at most, and this has more.',
     'field.body': 'text',
     'field.lede': 'lede',
@@ -1054,6 +1054,7 @@ const DICT_EN = {
     'foot.front_repo': 'front-end source ↗',
     'foot.api_repo': 'API source ↗',
     'foot.source': 'Read from Steam. Fetched {when}.',
+    'unit.hours': (v) => `${v.n} ${plural(v.raw, ['hour', 'hours'])}`,
     'g.a2_note': 'Arma 2 predates Steam achievements. There is nothing to load into this mission but the clock, so the map holds a single unit.',
     'g.accuracy': 'accuracy',
     'g.ach_of': 'achievements - {done} of {total}',
@@ -1466,6 +1467,8 @@ const DICT_EN = {
     'lang.en': 'English',
     'lang.pt': 'Português (Brasil)',
     'lang.ru': 'Русский',
+    'lang.zh-cn': '简体中文',
+    'lang.zh-tw': '繁體中文',
     /* The wait. Every step is something the server genuinely does, in the
        order it does it, and the lines that follow are what the window says
        once the wait has gone on long enough to be worth admitting. */
@@ -1607,7 +1610,7 @@ const DICT_EN = {
     'priv.kept_count': '<b>A count of visits, for seven days.</b> A second digest of your address, under a different secret that is replaced every seven days. While it stands, a visit of yours is recognisable as "the same one again"; when it is replaced, the previous digests are deleted and only totals remain. Kept with it: how many requests, the first and the last time, the region, and a guess at what kind of visitor it was. Deliberately not kept with it: a record of each day you came - because a day on this side and a day on the lookup side would be exactly the join the two counts are built to not have.',
     'priv.kept_hash': '<b>A salted hash of your address.</b> Not the address - a one-way digest of it, salted with a secret that never leaves this server, which cannot be turned back and is useless anywhere else. It counts one vote per person on the board, it holds the rate limit, and it is the handle a shut-out address needs for an appeal to be matched to the block it is about. This secret never changes: a ban that expires because a secret was rotated is not a ban.',
     'priv.kept_intro': 'Everything this server keeps once the request is over, with nothing left out:',
-    'priv.kept_lang': '<b>The language you picked.</b> One entry in your browser\'s localStorage, <b>sp-lang</b>, holding "en", "pt" or "ru". It also decides which Steam shop a price is read from, so a request for a price carries a country code derived from it - and that lands in the server log, which has no address in it. That is the only thing the choice sends anywhere.',
+    'priv.kept_lang': '<b>The language you picked.</b> One entry in your browser\'s localStorage, <b>sp-lang</b>, holding a supported language code. It also decides which Steam shop a price is read from, so a request for a price carries a country code derived from it - and that lands in the server log, which has no address in it. That is the only thing the choice sends anywhere.',
     'priv.kept_recent': '<b>What you looked up, in your browser.</b> A second localStorage entry, <b>sp-recent</b>, holding the last five profiles you looked up from the home page and nothing else about them - no times, no personas, no count. It is a shortcut back into the field, it never reaches this server, and the button beside the list on the home page erases it.',
     'priv.kept_log': '<b>A server log with no addresses.</b> The web server writes one line per request: the time, the path, the status code, the browser string. No IP address in it, deliberately - the format was changed to drop it, precisely so the log is not a record of who looked up whom.',
     'priv.kept_msg': '<b>The messages you send.</b> If you write on the feedback page, the text, the kind and the contact you chose to type are stored so I can read and answer them. Whatever I accept goes on the public board. Do not put anything in there you would not want read.',
@@ -1727,7 +1730,7 @@ const DICT_EN = {
     'abt.safe_2': 'Both halves of the site are public and MIT licensed: <a href="https://github.com/GustavoHSCruz/SteamProfiler.Front" rel="noopener">the front end ↗</a> and <a href="https://github.com/GustavoHSCruz/SteamProfiler.Api" rel="noopener">the service that reads Steam ↗</a>.',
     'abt.made': 'how it is made',
     'abt.made_tag': 'front + API',
-    'abt.made_1': 'Two open-source parts make the site. The front end is static HTML, CSS and JavaScript, with no framework or build step. The API is a Python service that talks to Steam, shapes the public data and keeps short-lived caches. Both live in their own public, MIT-licensed repository.',
+    'abt.made_1': 'Two open-source parts make the site. The front end is what your browser runs: the pages, the drawings, and every lookup you type. The API is a Python service that talks to Steam, shapes the public data and keeps short-lived caches. Both live in their own public, MIT-licensed repository.',
     'abt.made_2': 'It is a hobby project and it is built with AI assistance, reviewed and shipped by me. I would rather say that plainly here than have somebody work it out and wonder what else was not said.',
     'abt.find': 'where to find me',
     'abt.find_tag': 'and the site',
@@ -2229,4 +2232,55 @@ const DICT_EN = {
     'abt.status': 'How the service is doing right now',
     'abt.translate': 'Help translate the site',
     'st.cooling_for': 'asking again in {n}s',
+
+    /* ── The front page: the workspace, the surfaces, the parts ──────────
+       The stage is three tiles now instead of one picture with a window on
+       it: the field, the shape, and what the service knows at the moment the
+       page is read. The bands under it are the pages a lookup opens, the
+       doors that open without one, the two things that are not pages here at
+       all, and the repositories the whole of it is made of. */
+    'land.stage_map': 'the shape of a library',
+    'land.live_head': 'what it knows right now',
+    'land.live_games': 'games read in full',
+    'land.live_cat': 'apps in the catalogue',
+    'land.live_houses': 'publishers and developers',
+    'land.live_deck': 'rated for the Deck',
+    'land.live_link': 'the whole status',
+    'land.live_wait': 'asking the service',
+    'land.live_off': 'The service did not answer this panel. Nothing else on the page needed it.',
+
+    'land.c_cards_h': 'The badges, and what the rest would cost',
+    'land.c_cards_b': 'Every trading-card badge this library has made, the sets it has not, and what one of each missing card goes for on the market today.',
+    'land.c_ids_h': 'Every id the account has',
+    'land.c_ids_b': 'SteamID64 in decimal and in hex, STEAM_1 and STEAM_0, the invite code, the FiveM identifier, and the five addresses that all open the same profile. Arithmetic on a number already resolved, not a second request.',
+    'land.c_embed_h': 'A picture to take away',
+    'land.c_embed_b': 'A bar chart, a badge, a banner, a card of this library against another, a full-size Steam artwork. Each one as an address that stays current, or as a file that never changes again.',
+    'land.c_vs_h': 'Two libraries at one scale',
+    'land.c_vs_b': 'Both maps drawn against the same hour, the games the two have in common, and who put the time in where. Nothing is scored: the numbers are only set beside each other.',
+
+    'land.open_head': 'What opens with nobody in it',
+    'land.open_lede': 'A lookup is one way in and not the only one. Everything below this line needs no profile typed and names nobody.',
+
+    'land.take_head': 'Two of them are not pages here at all',
+    'land.emb_head': 'The chart, as an address',
+    'land.emb_body': 'Every profile page carries a generator: a bar chart, a badge, a banner, a card against another library, a full-size Steam artwork. Each one is an address that redraws itself when the hours move, or a file that never moves again. <b>Made for a README, a forum post or a Steam profile.</b>',
+    'land.emb_go': 'look a profile up',
+    'land.emb_mock': 'The shape of one, drawn by the service, sitting on a page that is not this one. No name on it here, for the same reason the map above has none.',
+
+    'land.eco_head': 'The parts it is made of',
+    'land.eco_lede': 'Five repositories, all public, all MIT. The site is one of them and not the largest.',
+    'land.eco_front_h': 'The site',
+    'land.eco_front_b': 'The pages, the drawings and the field you type into: everything your browser runs. Open, MIT, and the same checkout anybody who wants to change it works on.',
+    'land.eco_api_h': 'The service',
+    'land.eco_api_b': 'Python and the standard library, and nothing else. It reads Steam, caches what it may, draws the images, and answers every call these pages make.',
+    'land.eco_ext_h': 'The extension',
+    'land.eco_ext_b': 'One Manifest V3 source tree for Chrome and for Firefox. It runs on a store page and on a profile page and nowhere else, with no cookie and no sign-in.',
+    'land.eco_i18n_h': 'The strings',
+    'land.eco_i18n_b': 'Every word a reader sees, in a repository of its own, one file per language. A translation is a pull request there, and the build writes it into the two that serve it.',
+    'land.eco_player_h': 'The player',
+    'land.eco_player_b': 'What plays a trailer on a game page, on its own: progressive MP4 and WebM, Steam HLS through MediaSource, keyboard, fullscreen and picture-in-picture.',
+    'land.eco_repo': 'the repository',
+    'land.eco_langs': '{n} strings on this site, in {k} languages',
+    'land.eco_status': 'how the service is doing right now',
+    'land.eco_translate': 'how much of it each language has',
 };

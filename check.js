@@ -67,7 +67,8 @@ function load(lang) {
   const ctx = { plural: (n, forms) => forms[0] };
   vm.createContext(ctx);
   try {
-    vm.runInContext(fs.readFileSync(file, 'utf8') + `;globalThis.__D=DICT_${lang.toUpperCase()};`, ctx);
+    const name = `DICT_${lang.toUpperCase().replaceAll('-', '_')}`;
+    vm.runInContext(fs.readFileSync(file, 'utf8') + `;globalThis.__D=${name};`, ctx);
   } catch (e) {
     fail.push(`locales/site/${lang}.js did not load: ${e.message}`);
     return null;
