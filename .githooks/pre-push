@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Refuses a push that would leave a string broken, or a consumer holding
+# strings older than the ones here. Enable with:
+#   git config core.hooksPath .githooks
+exec "$(dirname "$0")/../check.sh"
