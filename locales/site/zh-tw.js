@@ -329,4 +329,8 @@ const DICT_ZH_TW = {
     'gp.yours_ph': 'Steam 個人檔案或其連結',
     'gp.proton': 'Linux 兼容性',
     'gp.categories': '類別',
+
+    // Site build version
+    'foot.site_version': "網站版本",
+    'foot.local_changes': "本機變更",
 };

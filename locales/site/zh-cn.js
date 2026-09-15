@@ -329,4 +329,8 @@ const DICT_ZH_CN = {
     'gp.yours_ph': 'Steam 资料或其链接',
     'gp.proton': 'Linux 兼容性',
     'gp.categories': '类别',
+
+    // Site build version
+    'foot.site_version': "网站版本",
+    'foot.local_changes': "本地更改",
 };

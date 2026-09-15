@@ -2265,4 +2265,8 @@ const DICT_RU = {
     'land.eco_langs': 'строк на сайте: {n}, языков: {k}',
     'land.eco_status': 'как сервис чувствует себя сейчас',
     'land.eco_translate': 'сколько уже есть у каждого языка',
+
+    // Site build version
+    'foot.site_version': "версия сайта",
+    'foot.local_changes': "локальные изменения",
 };
