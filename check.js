@@ -32,6 +32,7 @@ const vm = require('vm');
 
 const SITE = path.join(__dirname, 'locales', 'site');
 const EMBED = path.join(__dirname, 'locales', 'embed');
+const UI = path.join(__dirname, 'locales', 'ui');
 const VOID = new Set(['br', 'hr', 'img', 'input', 'wbr']);
 
 const fail = [];
@@ -180,6 +181,48 @@ if (tables.en) {
     if (extra.length) fail.push(`embed ${lang}: ${extra.join(', ')} not in English`);
   }
   note.push(`embed: ${Object.keys(tables.en).length} words × ${embedLangs.length} languages`);
+}
+
+// UI prose and complete examples share one source. PT-BR and RU must stay whole;
+// future languages may be partial and use English for missing keys.
+const uiLangs = languages(UI, '.json');
+const uiDicts = {};
+for (const lang of uiLangs) {
+  const source = fs.readFileSync(path.join(UI, `${lang}.json`), 'utf8');
+  const seen = new Set();
+  for (const match of source.matchAll(/^\s*"([^"]+)":/gm)) {
+    if (seen.has(match[1])) fail.push(`ui ${lang}: duplicate key ${match[1]}`);
+    seen.add(match[1]);
+  }
+  try { uiDicts[lang] = JSON.parse(source); }
+  catch (error) { fail.push(`ui ${lang}: ${error.message}`); }
+}
+if (uiDicts.en) {
+  for (const required of ['pt', 'ru']) {
+    if (!uiDicts[required]) fail.push(`ui: ${required} must exist with 100% coverage`);
+  }
+  const keys = Object.keys(uiDicts.en);
+  const codeAttributes = text => [...text.matchAll(/\b(?:class(?:Name)?|href|src|variant|data-tone|type|role|as|size|id|for|aria-describedby|aria-pressed|aria-current)="([^"]*)"/g)].map(m => m[0]).sort().join('\n');
+  for (const lang of uiLangs) {
+    const dict = uiDicts[lang];
+    if (!dict) continue;
+    const missing = keys.filter(key => !Object.hasOwn(dict, key));
+    if (missing.length && ['pt', 'ru'].includes(lang)) fail.push(`ui ${lang}: missing ${missing.join(', ')}`);
+    for (const [key, value] of Object.entries(dict)) {
+      if (!Object.hasOwn(uiDicts.en, key)) { fail.push(`ui ${lang}: unknown key ${key}`); continue; }
+      if (typeof value !== 'string' || !value.trim()) { fail.push(`ui ${lang} ${key}: expected a nonempty string`); continue; }
+      if (key.startsWith('example.')) {
+        if (codeAttributes(value) !== codeAttributes(uiDicts.en[key])) fail.push(`ui ${lang} ${key}: example changed a class, URL or code attribute`);
+      } else {
+        const trouble = tagTrouble(value);
+        if (trouble) fail.push(`ui ${lang} ${key}: ${trouble}`);
+        if (/<\/?(?:script|iframe|img|style|object)\b|<[^>]*\bon\w+\s*=/i.test(value)) fail.push(`ui ${lang} ${key}: unsupported executable markup`);
+        const vars = text => [...text.matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort().join(',');
+        if (vars(value) !== vars(uiDicts.en[key])) fail.push(`ui ${lang} ${key}: placeholder mismatch`);
+      }
+    }
+    note.push(`ui ${lang}: ${keys.length - missing.length}/${keys.length} strings (${Math.round((keys.length - missing.length) / keys.length * 100)}%)`);
+  }
 }
 
 for (const line of note) console.log(line);

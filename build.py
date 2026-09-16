@@ -36,6 +36,7 @@ this one are skipped and named, because a translator has only this repo.
 """
 
 import argparse
+import html
 import json
 import pathlib
 import re
@@ -44,6 +45,7 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent
 SITE = HERE / 'locales' / 'site'
 EMBED = HERE / 'locales' / 'embed'
+UI = HERE / 'locales' / 'ui'
 
 ENTRY = re.compile(r"^ {4}'((?:[^'\\]|\\.)*)':")
 
@@ -228,7 +230,31 @@ def coverage_js():
     ]) + '\n'
 
 
-def targets():
+def ui_docs(root):
+    """Build an offline-capable documentation page from UI structure and i18n strings.
+
+    English renders the static HTML and is the runtime fallback. All supported
+    UI dictionaries ship inline so language switching also works from disk.
+    """
+    template = (root / 'steamprofiler-ui/docs/index.template.html').read_text(encoding='utf-8')
+    dictionaries = {lang: json.loads((UI / f'{lang}.json').read_text(encoding='utf-8'))
+                    for lang in langs(UI, '.json')}
+    english = dictionaries['en']
+
+    def replace(match):
+        mode, key = match.groups()
+        if key not in english:
+            raise ValueError(f'UI template references unknown English key: {key}')
+        return english[key] if mode == 'ui_html' else html.escape(english[key], quote=True)
+
+    # Interpolate only the template; dictionary values are never interpreted as templates.
+    built = re.sub(r'\{\{(ui_html|ui)\.([a-zA-Z0-9_.-]+)\}\}', replace, template)
+    built = re.sub(r'\{\{ui_number\.(\d+)\}\}', lambda match: f'{int(match[1]):,}', built)
+    payload = json.dumps(dictionaries, ensure_ascii=False, separators=(',', ':')).replace('<', r'\u003c')
+    return '<!-- GENERATED from docs/index.template.html and SteamProfiler.i18n/locales/ui/. -->\n' + built.replace('{{UI_LOCALES}}', payload)
+
+
+def targets(root=HERE.parent):
     """(name, path under --root, what belongs in it). One dictionary per
     language, the words the API paints, and the counts /translate draws."""
     out = [('front', pathlib.Path(f'steamprofiler-front/site/dict.{lang}.js'),
@@ -236,6 +262,8 @@ def targets():
            for lang in langs(SITE, '.js')]
     out.append(('api', pathlib.Path('steamprofiler-api/i18n_words.py'), embed_words))
     out.append(('front', pathlib.Path('steamprofiler-front/site/coverage.js'), coverage_js))
+    if (root / 'steamprofiler-ui/docs/index.template.html').exists():
+        out.append(('ui', pathlib.Path('steamprofiler-ui/index.html'), lambda: ui_docs(root)))
     return out
 
 
@@ -245,10 +273,14 @@ def main():
                     help='compare instead of writing; exit 1 if a consumer has drifted')
     ap.add_argument('--root', default=str(HERE.parent), type=pathlib.Path,
                     help='folder the consumer repos sit in (default: beside this one)')
+    ap.add_argument('--consumer', choices=['front', 'api', 'ui'],
+                    help='build or check only this consumer')
     args = ap.parse_args()
 
     drift, skipped = [], []
-    for name, rel, render in targets():
+    for name, rel, render in targets(args.root):
+        if args.consumer and args.consumer != name:
+            continue
         path = (args.root / rel).resolve()
         if not path.parent.is_dir():
             skipped.append(f'{name}: {path.parent} is not checked out')

@@ -40,6 +40,7 @@ done
 
 FRONT="$ROOT/steamprofiler-front"
 API="$ROOT/steamprofiler-api"
+UI="$ROOT/steamprofiler-ui"
 
 die() { printf '\n%s\n' "$*" >&2; exit 1; }
 say() { printf '%s\n' "$*"; }
@@ -83,10 +84,11 @@ fi
 consumers=""
 [ -d "$FRONT/.git" ] && consumers="$consumers front"
 [ -d "$API/.git" ]   && consumers="$consumers api"
+[ -d "$UI/.git" ] && [ -f "$UI/docs/index.template.html" ] && consumers="$consumers ui"
 [ -d "$FRONT/.git" ] || die "$FRONT is not a checkout, and the site dictionary lives there."
 
 for name in $consumers; do
-  case "$name" in front) repo="$FRONT" ;; api) repo="$API" ;; esac
+  case "$name" in front) repo="$FRONT" ;; api) repo="$API" ;; ui) repo="$UI" ;; esac
   branch="$(git -C "$repo" rev-parse --abbrev-ref HEAD)"
   [ "$branch" = "main" ] || die "$name is on '$branch', not main."
   git -C "$repo" fetch -q origin || die "$name: could not reach origin"
@@ -119,6 +121,7 @@ for name in $consumers; do
   case "$name" in
     front) repo="$FRONT"; paths=('site/dict.*.js' 'site/coverage.js') ;;
     api)   repo="$API";   paths=('i18n_words.py') ;;
+    ui)    repo="$UI";    paths=('index.html') ;;
   esac
   # An array, because the front has two kinds of built file now: the
   # dictionaries and the coverage counts /translate draws. One string with a

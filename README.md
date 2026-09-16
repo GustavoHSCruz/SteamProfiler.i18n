@@ -1,7 +1,7 @@
 # SteamProfiler.i18n
 
 Every string steamprofiler.org shows a reader, in every language it speaks, and
-the build that writes them into the two repositories that serve them.
+the build that writes them into the repositories that serve them.
 
 The site is [SteamProfiler.Front](https://github.com/GustavoHSCruz/SteamProfiler.Front)
 and the service behind it is
@@ -13,6 +13,7 @@ built copy, this repository holds the source.
 locales/site/<lang>.js     ->  SteamProfiler.Front   site/dict.<lang>.js
 locales/embed/<lang>.json  ->  SteamProfiler.Api     i18n_words.py
 both of them, counted      ->  SteamProfiler.Front   site/coverage.js
+locales/ui/<lang>.json     ->  SteamProfiler.UI      index.html
 ```
 
 The third line is not strings but a count of them, and it is written from here
@@ -36,7 +37,7 @@ lines that language has translated swapped in: an untranslated key arrives as
 English text, and a language that is 40% done still answers for 100% of the
 keys.
 
-## The two stores, and why they are not one
+## The string stores
 
 **`locales/site/`** is the dictionary the browser loads: a little over two
 thousand strings, one file per language. A value is either a string or a small
@@ -57,6 +58,19 @@ are plain strings with no markup and no interpolation, which is why they are
 JSON. Everything else the API answers with is a key (`@err.rate|n=6`), resolved
 by the front against the dictionary above, so the server never has to know
 which language anybody reads.
+
+**`locales/ui/`** contains documentation strings for SteamProfiler.UI: prose,
+navigation, accessible labels, feedback and complete code examples. English is
+the source of truth and fallback. PT-BR (`pt.json`) and Russian (`ru.json`) must
+cover every key; Chinese documentation can be added later. `check.js` enforces
+coverage, balanced markup and unchanged classes, URLs and API attributes in
+translated examples.
+
+The UI keeps the documentation structure in `docs/index.template.html`.
+`./build.py --consumer ui` combines that template and these dictionaries into
+its `index.html`, with English static text and all dictionaries inline for
+offline language switching. `./release.sh` also includes UI when checked out;
+merely running the build writes files and publishes nothing.
 
 ## How a string reaches a reader
 
@@ -155,6 +169,7 @@ and `blog.py` (`LANGS`, which decides how many translations a post gets).
 ./check.sh --strings    only the strings, which is what the pre-push hook runs
 ./build.py              write the built files into the sibling repositories
 ./build.py --root ~/somewhere/else
+./build.py --consumer ui    build only the UI documentation
 ```
 
 Needs `python3` and `node`, both only to run these two scripts. The consumers
