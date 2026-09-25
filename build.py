@@ -7,6 +7,7 @@ still renders without ever having seen this repo, which is the whole reason the
 artifacts are checked in rather than built at deploy time.
 
   locales/site/<lang>.js     ->  SteamProfiler.Front  site/dict.<lang>.js
+                                                    next/src/i18n/<lang>.ts
   locales/embed/<lang>.json  ->  SteamProfiler.Api    i18n_words.py
   both of them, counted      ->  SteamProfiler.Front  site/coverage.js
 
@@ -90,7 +91,6 @@ def site_dict(lang):
     lines - and every key this language has translated replaces the English
     line in place. What is left untranslated stays English, which is the
     fallback that used to happen in the reader's browser."""
-    mine = entries_of(SITE / f'{lang}.js') if lang != 'en' else {}
     out = [
         f'/* steamprofiler.org - every string on the site, in {lang}.',
         '',
@@ -114,12 +114,47 @@ def site_dict(lang):
         f"const DICT_LANG = '{lang}';",
         'const DICT = {',
     ]
+    out += merged_lines(lang)
+    out.append('};')
+    return '\n'.join(out) + '\n'
+
+
+def merged_lines(lang):
+    """English as the skeleton, this language's lines swapped in, indented
+    one level less than in locales/ because the built object sits at the top."""
+    mine = entries_of(SITE / f'{lang}.js') if lang != 'en' else {}
+    out = []
     for line in body_of(SITE / 'en.js'):
         m = ENTRY.match(line)
         if m and m.group(1) in mine:
             line = mine[m.group(1)]
         out.append(line[2:] if line.startswith('  ') else line)
-    out.append('};')
+    return out
+
+
+def next_dict(lang):
+    """The same dictionary as site_dict(), as a module the React front imports.
+
+    Same merge, same lines, so the two fronts cannot say different things
+    while both are served. What differs is the wrapper: a module has no
+    global plural() to call, so each file gets one bound to its own language,
+    and the build splits the five into chunks so a reader downloads one."""
+    out = [
+        f'/* steamprofiler.org - every string on the site, in {lang}.',
+        '',
+        '   GENERATED from the SteamProfiler.i18n repository - do not edit here.',
+        '   Built from the same lines as site/dict.<lang>.js, with English',
+        '   underneath, so a key this language has not translated is English. */',
+        '',
+        "import { pluralFor } from './plural';",
+        "import type { Dict } from './plural';",
+        '',
+        f"const plural = pluralFor('{lang}');",
+        '',
+        'const DICT: Dict = {',
+    ]
+    out += merged_lines(lang)
+    out += ['};', '', 'export default DICT;']
     return '\n'.join(out) + '\n'
 
 
@@ -260,6 +295,9 @@ def targets(root=HERE.parent):
     out = [('front', pathlib.Path(f'steamprofiler-front/site/dict.{lang}.js'),
             (lambda l: lambda: site_dict(l))(lang))
            for lang in langs(SITE, '.js')]
+    out += [('front', pathlib.Path(f'steamprofiler-front/next/src/i18n/{lang}.ts'),
+             (lambda l: lambda: next_dict(l))(lang))
+            for lang in langs(SITE, '.js')]
     out.append(('api', pathlib.Path('steamprofiler-api/i18n_words.py'), embed_words))
     out.append(('front', pathlib.Path('steamprofiler-front/site/coverage.js'), coverage_js))
     if (root / 'steamprofiler-ui/docs/index.template.html').exists():

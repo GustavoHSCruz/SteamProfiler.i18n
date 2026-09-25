@@ -11,6 +11,7 @@ built copy, this repository holds the source.
 
 ```
 locales/site/<lang>.js     ->  SteamProfiler.Front   site/dict.<lang>.js
+                                                     next/src/i18n/<lang>.ts
 locales/embed/<lang>.json  ->  SteamProfiler.Api     i18n_words.py
 both of them, counted      ->  SteamProfiler.Front   site/coverage.js
 locales/ui/<lang>.json     ->  SteamProfiler.UI      index.html
