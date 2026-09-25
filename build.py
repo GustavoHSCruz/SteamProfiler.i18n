@@ -9,7 +9,7 @@ artifacts are checked in rather than built at deploy time.
   locales/site/<lang>.js     ->  SteamProfiler.Front  site/dict.<lang>.js
                                                     next/src/i18n/<lang>.ts
   locales/embed/<lang>.json  ->  SteamProfiler.Api    i18n_words.py
-  both of them, counted      ->  SteamProfiler.Front  site/coverage.js
+  both of them, counted      ->  SteamProfiler.Front  site/coverage.js, next/src/i18n/coverage.ts
 
 **One file per language, and the fallback is resolved here.** A reader used to
 download every language in order to read in one of them. Now the browser is
@@ -265,6 +265,21 @@ def coverage_js():
     ]) + '\n'
 
 
+def coverage_ts():
+    """The same counts for the React front, which imports them."""
+    body = json.dumps(coverage(), ensure_ascii=False, indent=2)
+    return '\n'.join([
+        '/* steamprofiler.org - how much of the site each language has.',
+        '',
+        '   GENERATED from the SteamProfiler.i18n repository - do not edit here.',
+        '   The same counts as site/coverage.js; /translate is the page that reads it. */',
+        '',
+        'const COVERAGE = ' + body + ';',
+        '',
+        'export default COVERAGE;',
+    ]) + '\n'
+
+
 def ui_docs(root):
     """Build an offline-capable documentation page from UI structure and i18n strings.
 
@@ -300,6 +315,7 @@ def targets(root=HERE.parent):
             for lang in langs(SITE, '.js')]
     out.append(('api', pathlib.Path('steamprofiler-api/i18n_words.py'), embed_words))
     out.append(('front', pathlib.Path('steamprofiler-front/site/coverage.js'), coverage_js))
+    out.append(('front', pathlib.Path('steamprofiler-front/next/src/i18n/coverage.ts'), coverage_ts))
     if (root / 'steamprofiler-ui/docs/index.template.html').exists():
         out.append(('ui', pathlib.Path('steamprofiler-ui/index.html'), lambda: ui_docs(root)))
     return out
